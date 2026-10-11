@@ -61,66 +61,109 @@ def bn_day_to_number(label: str) -> int:
 
 
 def load_excel_days():
+    """Return {day_number: {"dayBn": label, "tasks": [...]}} for every row in the sheet."""
     wb = openpyxl.load_workbook(XLSX, data_only=True)
     ws = wb[wb.sheetnames[0]]
     rows = list(ws.iter_rows(values_only=True))
     header, body = rows[0], rows[1:]
     assert header[0] and "Day" in str(header[0]), f"Unexpected header: {header}"
-    days = {}  # day number -> {"dayBn": label, "tasks": [...]}
+    days = {}
     for day_cell, subject, topics, book in body:
         day_cell = (day_cell or "").strip()
+        if not day_cell:
+            continue
         n = bn_day_to_number(day_cell)
-        if n not in days:
-            days[n] = {"dayBn": day_cell, "tasks": []}
-        days[n]["tasks"].append(
-            {
-                "subject": (subject or "").strip(),
-                "topics": (topics or "").strip(),
-                "book": (book or "").strip(),
-            }
-        )
-    return [days[n] for n in sorted(days)]
-
-
-def build_extension_days():
-    cursors = {s: 0 for s in ext.QUEUES}
-    days = []
-    for n in range(21, 76):
-        pattern = ext.DAY_PATTERN[(n - 21) % 6]
-        tasks = []
-        for subject in pattern:
-            q = ext.QUEUES[subject]
-            i = cursors[subject]
-            if i >= len(q):
-                raise SystemExit(f"Queue for {subject!r} exhausted at day {n}")
-            tasks.append(
-                {"subject": subject, "topics": q[i], "book": ext.BOOKS[subject]}
+        if n < 1:
+            print(f"warning: skipping unreadable day label {day_cell!r}")
+            continue
+        if n in days:
+            days[n]["tasks"].append(
+                {
+                    "subject": (subject or "").strip(),
+                    "topics": (topics or "").strip(),
+                    "book": (book or "").strip(),
+                }
             )
-            cursors[subject] += 1
-        days.append({"dayBn": bn_day_label(n), "tasks": tasks})
-    for subject, i in cursors.items():
-        left = len(ext.QUEUES[subject]) - i
-        if left:
-            print(f"note: {subject!r} queue has {left} unused item(s)")
+        else:
+            days[n] = {
+                "dayBn": day_cell,
+                "tasks": [
+                    {
+                        "subject": (subject or "").strip(),
+                        "topics": (topics or "").strip(),
+                        "book": (book or "").strip(),
+                    }
+                ],
+            }
     return days
 
 
-def main():
-    excel_days = load_excel_days()
-    ext_days = build_extension_days()
+class ExtensionFiller:
+    """Fills syllabus days that the spreadsheet does not define yet."""
+
+    def __init__(self):
+        self.cursors = {s: 0 for s in ext.QUEUES}
+        self.filled = 0
+
+    def next_day(self, n):
+        pattern = ext.DAY_PATTERN[self.filled % len(ext.DAY_PATTERN)]
+        self.filled += 1
+        tasks = []
+        for subject in pattern:
+            q = ext.QUEUES[subject]
+            i = self.cursors[subject]
+            if i >= len(q):
+                raise SystemExit(f"Queue for {subject!r} exhausted while filling day {n}")
+            tasks.append({"subject": subject, "topics": q[i], "book": ext.BOOKS[subject]})
+            self.cursors[subject] += 1
+        return {"dayBn": bn_day_label(n), "tasks": tasks}
+
+    def report(self):
+        for subject, i in self.cursors.items():
+            left = len(ext.QUEUES[subject]) - i
+            if left:
+                print(f"note: {subject!r} queue has {left} unused item(s)")
+
+
+def merge_days(excel_days, total=75):
+    """Prefer spreadsheet content per day; fill only the missing days from the extension."""
+    filler = ExtensionFiller()
     curriculum = []
-    for i, d in enumerate(excel_days + ext_days, start=1):
+    for n in range(1, total + 1):
+        if n in excel_days:
+            d = excel_days[n]
+        else:
+            d = filler.next_day(n)
         tasks = []
         for j, t in enumerate(d["tasks"]):
             tasks.append(
                 {
-                    "id": f"d{i}-{j}",
+                    "id": f"d{n}-{j}",
                     "subject": t["subject"],
                     "topics": t["topics"],
                     "book": t["book"],
                 }
             )
-        curriculum.append({"day": i, "dayBn": d["dayBn"], "tasks": tasks})
+        curriculum.append({"day": n, "dayBn": d["dayBn"], "tasks": tasks})
+    filler.report()
+    return curriculum
+
+
+def main():
+    excel_days = load_excel_days()
+    if not excel_days:
+        print("warning: no days found in the spreadsheet; generating all 75 days")
+    missing = [n for n in range(1, 76) if n not in excel_days]
+    if missing:
+        print(
+            f"spreadsheet defines {len(excel_days)} day(s); "
+            f"filling {len(missing)} missing day(s) with placeholder content"
+        )
+    beyond = [n for n in excel_days if n > 75]
+    if beyond:
+        print(f"warning: ignoring spreadsheet day(s) beyond 75: {sorted(beyond)}")
+
+    curriculum = merge_days(excel_days, total=75)
 
     # 37-day plan: pairs of syllabus days per plan day (last day covers 3).
     groups = []

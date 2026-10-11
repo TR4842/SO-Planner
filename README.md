@@ -42,16 +42,32 @@ Day Wise Routine.xlsx — source syllabus for days 1–20
 
 - **Days 1–20** come verbatim from `Day Wise Routine.xlsx` (subjects, topics and
   books exactly as written there).
-- **Days 21–75** continue the same subject rotation, topic progression and book
-  list (see `tools/extension_content.py`). Edit the queues there — or edit
-  `js/data.js` by hand — to match your own routine.
+- **Days not yet in the spreadsheet** are filled with placeholder content that
+  continues the same subject rotation and book list (see
+  `tools/extension_content.py`). Today that is days 21–75.
 
-To regenerate `js/data.js` after editing the content module:
+### Updating the routine later (e.g. adding days 21–75 to the Excel)
+
+The page reads the pre-built `js/data.js`, not the Excel directly. After editing
+the spreadsheet:
 
 ```bash
-pip install openpyxl
+pip install openpyxl   # once
 python3 tools/build_data.py
 ```
+
+Then just **refresh the page** in your browser — that's it. The builder always
+merges the same way:
+
+- whatever days exist in the Excel are used **exactly as written**;
+- only the days **missing** from the Excel get placeholder content;
+- interior gaps are filled too (e.g. if day 7 is missing from the sheet).
+
+**Your progress is never reset.** Ticks, profile, streak and plan dates live in
+the browser's `localStorage` and are keyed by day + task position
+(`d<day>-<index>`), so they survive every data rebuild. Only caveat: if you
+*reorder or delete* tasks **within** an existing day, ticks follow the task
+position and may shift; adding tasks at the end of a day is always safe.
 
 ## Notes
 
