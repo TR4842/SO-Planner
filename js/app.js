@@ -85,7 +85,12 @@
       if (!raw) return st;
       var saved = JSON.parse(raw);
       if (saved && typeof saved === "object") {
-        if (saved.profile) st.profile = saved.profile;
+        if (saved.profile) {
+          st.profile = saved.profile;
+          if (st.profile.gender !== "male" && st.profile.gender !== "female") {
+            st.profile.gender = "male";
+          }
+        }
         if (saved.planId && DATA.plans[saved.planId]) st.planId = saved.planId;
         if (saved.plans) {
           for (var k in st.plans) {
@@ -576,7 +581,7 @@
   function openSettings() {
     fillAvatarPreviews();
     $("setName").value = state.profile ? state.profile.name : "";
-    setGenderVal = state.profile ? state.profile.gender : "other";
+    setGenderVal = state.profile && state.profile.gender === "female" ? "female" : "male";
     selectInGroup($("setGender"), "data-gender", setGenderVal);
     selectInGroup($("setPlan"), "data-plan", state.planId);
     $("setStartDate").value = planState().startDate || todayISO();

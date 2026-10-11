@@ -24,25 +24,15 @@
       extras:
         '<circle cx="29.5" cy="48" r="2.4" fill="#fbbf24"/><circle cx="66.5" cy="48" r="2.4" fill="#fbbf24"/>',
     },
-    other: {
-      bg: ["#14b8a6", "#6366f1"],
-      hair: "#1f5f5b",
-      hairBack: '<rect x="26" y="16" width="44" height="42" rx="18" fill="HAIR"/>',
-      fringe:
-        '<path d="M29 39 C30 23 37 16 48 16 C59 16 66 23 67 39 C62 32 55 31 49 32 C43 33 36 32 29 39 Z" fill="HAIR"/>',
-      shirt: ["#0d9488", "#2dd4bf"],
-      extras:
-        '<g fill="none" stroke="#22304a" stroke-width="2"><circle cx="41" cy="42" r="5.5"/><circle cx="55" cy="42" r="5.5"/><path d="M46.5 42 h3"/></g>',
-    },
   };
 
   /**
    * Build a standalone SVG avatar string.
-   * @param {"male"|"female"|"other"} gender
+   * @param {"male"|"female"} gender
    * @param {number} size — rendered px size (square)
    */
   function svg(gender, size) {
-    var st = STYLES[gender] || STYLES.other;
+    var st = STYLES[gender] || STYLES.male;
     var id = "av" + ++uid;
     var skin = "#f2c19a";
     var s = size || 48;
