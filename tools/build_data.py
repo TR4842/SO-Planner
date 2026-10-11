@@ -1,0 +1,215 @@
+# -*- coding: utf-8 -*-
+"""Build js/data.js from "Day Wise Routine.xlsx" + tools/extension_content.py.
+
+Days 1-20 are read verbatim from the spreadsheet. Days 21-75 are generated from
+the continuation queues in extension_content.py using the same subject
+rotation and book list as the source sheet.
+
+Usage:  python3 tools/build_data.py
+"""
+import json
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import extension_content as ext  # noqa: E402
+
+import openpyxl  # noqa: E402
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+XLSX = os.path.join(ROOT, "Day Wise Routine.xlsx")
+OUT = os.path.join(ROOT, "js", "data.js")
+
+BN_DIGITS = "০১২৩৪৫৬৭৮৯"
+
+
+def to_bn_num(n: int) -> str:
+    return "".join(BN_DIGITS[int(d)] for d in str(n))
+
+
+def bn_day_label(n: int) -> str:
+    """Bengali ordinal day label, e.g. 21 -> ২১তম দিন."""
+    if n == 1:
+        suf = "ম"
+    elif n == 2:
+        suf = "য়"
+    elif n == 3:
+        suf = "য়"
+    elif n == 4:
+        suf = "র্থ"
+    elif n == 6:
+        suf = "ষ্ঠ"
+    elif n in (5, 7, 8, 9, 10, 11):
+        suf = "ম"
+    else:
+        suf = "তম"
+    return f"{to_bn_num(n)}{suf} দিন"
+
+
+DAY_RE = re.compile(r"(\d+)")
+
+
+def bn_day_to_number(label: str) -> int:
+    """Convert a Bengali day label like '১৩ তম দিন' to 13."""
+    bn_digits = {c: str(i) for i, c in enumerate(BN_DIGITS)}
+    num = ""
+    for ch in label:
+        if ch in bn_digits:
+            num += bn_digits[ch]
+    return int(num) if num else 0
+
+
+def load_excel_days():
+    """Return {day_number: {"dayBn": label, "tasks": [...]}} for every row in the sheet."""
+    wb = openpyxl.load_workbook(XLSX, data_only=True)
+    ws = wb[wb.sheetnames[0]]
+    rows = list(ws.iter_rows(values_only=True))
+    header, body = rows[0], rows[1:]
+    assert header[0] and "Day" in str(header[0]), f"Unexpected header: {header}"
+    days = {}
+    for day_cell, subject, topics, book in body:
+        day_cell = (day_cell or "").strip()
+        if not day_cell:
+            continue
+        n = bn_day_to_number(day_cell)
+        if n < 1:
+            print(f"warning: skipping unreadable day label {day_cell!r}")
+            continue
+        if n in days:
+            days[n]["tasks"].append(
+                {
+                    "subject": (subject or "").strip(),
+                    "topics": (topics or "").strip(),
+                    "book": (book or "").strip(),
+                }
+            )
+        else:
+            days[n] = {
+                "dayBn": day_cell,
+                "tasks": [
+                    {
+                        "subject": (subject or "").strip(),
+                        "topics": (topics or "").strip(),
+                        "book": (book or "").strip(),
+                    }
+                ],
+            }
+    return days
+
+
+class ExtensionFiller:
+    """Fills syllabus days that the spreadsheet does not define yet."""
+
+    def __init__(self):
+        self.cursors = {s: 0 for s in ext.QUEUES}
+        self.filled = 0
+
+    def next_day(self, n):
+        pattern = ext.DAY_PATTERN[self.filled % len(ext.DAY_PATTERN)]
+        self.filled += 1
+        tasks = []
+        for subject in pattern:
+            q = ext.QUEUES[subject]
+            i = self.cursors[subject]
+            if i >= len(q):
+                raise SystemExit(f"Queue for {subject!r} exhausted while filling day {n}")
+            tasks.append({"subject": subject, "topics": q[i], "book": ext.BOOKS[subject]})
+            self.cursors[subject] += 1
+        return {"dayBn": bn_day_label(n), "tasks": tasks}
+
+    def report(self):
+        for subject, i in self.cursors.items():
+            left = len(ext.QUEUES[subject]) - i
+            if left:
+                print(f"note: {subject!r} queue has {left} unused item(s)")
+
+
+def merge_days(excel_days, total=75):
+    """Prefer spreadsheet content per day; fill only the missing days from the extension."""
+    filler = ExtensionFiller()
+    curriculum = []
+    for n in range(1, total + 1):
+        if n in excel_days:
+            d = excel_days[n]
+        else:
+            d = filler.next_day(n)
+        tasks = []
+        for j, t in enumerate(d["tasks"]):
+            tasks.append(
+                {
+                    "id": f"d{n}-{j}",
+                    "subject": t["subject"],
+                    "topics": t["topics"],
+                    "book": t["book"],
+                }
+            )
+        curriculum.append({"day": n, "dayBn": d["dayBn"], "tasks": tasks})
+    filler.report()
+    return curriculum
+
+
+def main():
+    excel_days = load_excel_days()
+    if not excel_days:
+        print("warning: no days found in the spreadsheet; generating all 75 days")
+    missing = [n for n in range(1, 76) if n not in excel_days]
+    if missing:
+        print(
+            f"spreadsheet defines {len(excel_days)} day(s); "
+            f"filling {len(missing)} missing day(s) with placeholder content"
+        )
+    beyond = [n for n in excel_days if n > 75]
+    if beyond:
+        print(f"warning: ignoring spreadsheet day(s) beyond 75: {sorted(beyond)}")
+
+    curriculum = merge_days(excel_days, total=75)
+
+    # 37-day plan: pairs of syllabus days per plan day (last day covers 3).
+    groups = []
+    d = 1
+    while d <= 75:
+        if d <= 72:
+            groups.append([d, d + 1])
+            d += 2
+        else:
+            groups.append([73, 74, 75])
+            d += 3
+
+    payload = {
+        "meta": {
+            "title": "SO Planner — Bank Job Preparation Routine",
+            "source": "Day Wise Routine.xlsx (days 1-20) + tools/extension_content.py (days 21-75)",
+            "totalSyllabusDays": 75,
+        },
+        "plans": {
+            "75": {
+                "id": "75",
+                "name": "75-Day Plan",
+                "tagline": "Steady pace — one syllabus day at a time",
+                "totalDays": 75,
+                "groups": [[i] for i in range(1, 76)],
+            },
+            "37": {
+                "id": "37",
+                "name": "37-Day Plan",
+                "tagline": "Fast pace — about two syllabus days per day",
+                "totalDays": 37,
+                "groups": groups,
+            },
+        },
+        "curriculum": curriculum,
+    }
+
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    with open(OUT, "w", encoding="utf-8") as f:
+        f.write("/* Generated by tools/build_data.py — edit that, not this. */\n")
+        f.write("window.SOP_DATA = ")
+        json.dump(payload, f, ensure_ascii=False, indent=1)
+        f.write(";\n")
+    total_tasks = sum(len(c["tasks"]) for c in curriculum)
+    print(f"wrote {OUT}: {len(curriculum)} syllabus days, {total_tasks} tasks")
+
+
+if __name__ == "__main__":
+    main()

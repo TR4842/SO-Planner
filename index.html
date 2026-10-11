@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="SO Planner — offline day-wise bank job preparation routine (75-day & 37-day plans).">
+  <title>SO Planner · Bank Job Prep Routine</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='1' stop-color='%23a855f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='43' font-size='32' text-anchor='middle' fill='white' font-family='Segoe UI,sans-serif' font-weight='700'%3ES%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="bg-decor" aria-hidden="true">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+  </div>
+
+  <!-- ======================= Onboarding ======================= -->
+  <div id="onboarding" class="overlay" hidden>
+    <div class="card onboarding-card" role="dialog" aria-labelledby="onbTitle">
+      <div class="onb-hero">
+        <div class="onb-logo" aria-hidden="true">🎓</div>
+        <h1 id="onbTitle">Welcome to <span class="grad-text">SO Planner</span></h1>
+        <p class="muted">Your personal offline bank job preparation routine.<br>Let's set up your profile.</p>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Your name</span>
+        <input id="onbName" type="text" maxlength="40" placeholder="e.g. Rafi" autocomplete="name">
+      </label>
+
+      <div class="field">
+        <span class="field-label">Gender</span>
+        <div class="gender-grid" id="onbGender" role="radiogroup" aria-label="Gender">
+          <button type="button" class="gender-card" data-gender="male" role="radio" aria-checked="false">
+            <span class="avatar-preview" data-avatar="male"></span>
+            <span class="gender-name">Male</span>
+          </button>
+          <button type="button" class="gender-card" data-gender="female" role="radio" aria-checked="false">
+            <span class="avatar-preview" data-avatar="female"></span>
+            <span class="gender-name">Female</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Choose your plan</span>
+        <div class="plan-grid" id="onbPlan" role="radiogroup" aria-label="Plan">
+          <button type="button" class="plan-card" data-plan="75" role="radio" aria-checked="false">
+            <span class="plan-days">75</span>
+            <span class="plan-name">75-Day Plan</span>
+            <span class="plan-tag">Steady pace — one syllabus day at a time</span>
+          </button>
+          <button type="button" class="plan-card" data-plan="37" role="radio" aria-checked="false">
+            <span class="plan-days">37</span>
+            <span class="plan-name">37-Day Plan</span>
+            <span class="plan-tag">Fast pace — about two syllabus days per day</span>
+          </button>
+        </div>
+      </div>
+
+      <button id="onbStart" class="btn btn-primary btn-block" type="button">Start my journey →</button>
+      <p class="onb-note">Works fully offline · your progress is saved on this device</p>
+    </div>
+  </div>
+
+  <!-- ========================= Header ========================= -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo" aria-hidden="true">🎓</div>
+      <div>
+        <div class="brand-title">SO Planner</div>
+        <div class="brand-sub">Bank Job Preparation Routine</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="user-chip">
+        <span id="headerAvatar" class="avatar" aria-hidden="true"></span>
+        <span class="user-text">
+          <span id="greeting" class="greeting">Hello!</span>
+          <span id="headerMeta" class="header-meta"></span>
+        </span>
+      </div>
+      <button id="settingsBtn" class="icon-btn" type="button" aria-label="Settings" title="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <!-- ========================= Main ========================== -->
+  <main class="wrap">
+    <!-- Progress hero -->
+    <section class="card hero" aria-label="Progress overview">
+      <div class="hero-ring">
+        <svg viewBox="0 0 120 120" class="ring" aria-hidden="true">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#6366f1"/>
+              <stop offset="55%" stop-color="#8b5cf6"/>
+              <stop offset="100%" stop-color="#d946ef"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-track" cx="60" cy="60" r="52"/>
+          <circle id="ringFill" class="ring-fill" cx="60" cy="60" r="52"/>
+        </svg>
+        <div class="ring-label">
+          <span id="ringPct" class="ring-pct">0%</span>
+          <span class="ring-cap">overall</span>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <h1 id="heroTitle" class="hero-title">Day 1 of 75</h1>
+        <p id="heroDate" class="muted"></p>
+        <div class="stat-row">
+          <div class="stat-pill">
+            <span class="stat-emoji">📅</span>
+            <span><b id="statDay">1</b> / <span id="statTotal">75</span><small> plan day</small></span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-emoji">✅</span>
+            <span><b id="statDone">0</b><small> tasks done</small></span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-emoji">🔥</span>
+            <span><b id="statStreak">0</b><small> day streak</small></span>
+          </div>
+        </div>
+        <div class="today-bar-wrap">
+          <div class="today-bar-head">
+            <span>Today's goals</span>
+            <span id="todayBarLabel" class="muted">0 / 0</span>
+          </div>
+          <div class="bar" role="progressbar" aria-label="Today's goals progress">
+            <div id="todayBar" class="bar-fill"></div>
+          </div>
+        </div>
+        <div id="dayMap" class="day-map" aria-label="Day map — click a day to open it"></div>
+      </div>
+    </section>
+
+    <!-- Day navigator -->
+    <nav class="card day-nav" aria-label="Day navigation">
+      <button id="prevDay" class="icon-btn" type="button" aria-label="Previous day">◀</button>
+      <div class="day-nav-center">
+        <div id="viewTitle" class="view-title">Day 1</div>
+        <div id="viewSub" class="muted view-sub"></div>
+      </div>
+      <button id="todayBtn" class="btn btn-ghost" type="button" hidden>Today</button>
+      <button id="nextDay" class="icon-btn" type="button" aria-label="Next day">▶</button>
+    </nav>
+
+    <!-- Pending goals (shown above today's goals when any) -->
+    <section id="pendingSection" class="card pending-card" hidden>
+      <div class="pending-head">
+        <h2 class="section-title">⏳ Pending goals</h2>
+        <span id="pendingCount" class="pill pill-warn">0</span>
+      </div>
+      <p class="muted small">From earlier days — finish these to clear your backlog.</p>
+      <ul id="pendingList" class="task-list"></ul>
+    </section>
+
+    <!-- Day goals -->
+    <section class="card goals-card">
+      <div class="goals-head">
+        <h2 id="goalsTitle" class="section-title">Today's goals</h2>
+        <button id="markAllBtn" class="btn btn-soft" type="button">✓ Mark all done</button>
+      </div>
+      <div id="goalList" class="task-list"></div>
+      <div id="emptyState" class="empty-state" hidden>
+        <div class="empty-emoji">🗓️</div>
+        <p>Nothing scheduled here. Enjoy the breather!</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    SO Planner · works fully offline · progress is stored only on this device
+  </footer>
+
+  <!-- =================== Day-change popup ==================== -->
+  <div id="dayModal" class="overlay" hidden>
+    <div class="card modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="modalClose" type="button" aria-label="Close popup" title="Close">✕</button>
+      <div id="modalIcon" class="modal-icon">🎉</div>
+      <h2 id="modalTitle" class="modal-title">Great job!</h2>
+      <div id="modalBody" class="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modalOk" class="btn btn-primary" type="button">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================== Settings ========================= -->
+  <div id="settingsModal" class="overlay" hidden>
+    <div class="card modal-card settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <button class="modal-close" id="settingsClose" type="button" aria-label="Close settings" title="Close">✕</button>
+      <h2 id="settingsTitle" class="modal-title">⚙️ Settings</h2>
+
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input id="setName" type="text" maxlength="40">
+      </label>
+
+      <div class="field">
+        <span class="field-label">Gender &amp; avatar</span>
+        <div class="gender-grid compact" id="setGender" role="radiogroup" aria-label="Gender">
+          <button type="button" class="gender-card" data-gender="male" role="radio"><span class="avatar-preview" data-avatar="male"></span><span class="gender-name">Male</span></button>
+          <button type="button" class="gender-card" data-gender="female" role="radio"><span class="avatar-preview" data-avatar="female"></span><span class="gender-name">Female</span></button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Plan</span>
+        <div class="plan-grid" id="setPlan" role="radiogroup" aria-label="Plan">
+          <button type="button" class="plan-card" data-plan="75" role="radio"><span class="plan-days">75</span><span class="plan-name">75-Day Plan</span></button>
+          <button type="button" class="plan-card" data-plan="37" role="radio"><span class="plan-days">37</span><span class="plan-name">37-Day Plan</span></button>
+        </div>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Current plan start date</span>
+        <input id="setStartDate" type="date">
+      </label>
+
+      <div class="settings-row">
+        <button id="exportBtn" class="btn btn-soft" type="button">⬇ Export progress</button>
+        <button id="importBtn" class="btn btn-soft" type="button">⬆ Import progress</button>
+        <input id="importFile" type="file" accept="application/json,.json" hidden>
+      </div>
+      <div class="settings-row">
+        <button id="resetBtn" class="btn btn-danger-soft" type="button">Reset everything</button>
+        <button id="settingsDone" class="btn btn-primary" type="button">Done</button>
+      </div>
+      <p class="onb-note">Switching plans keeps your ticked tasks. Each plan remembers its own start date.</p>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/avatars.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
